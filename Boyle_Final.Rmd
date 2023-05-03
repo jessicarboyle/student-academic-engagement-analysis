@@ -1,0 +1,578 @@
+---
+title: "Boyle_Logistic Regression"
+author: "Jess Boyle"
+date: "2023-03-27"
+output: 
+  html_document: 
+    toc: yes
+    number_sections: yes
+---
+
+# Introduction
+Individual classroom management practices are instructional practices that support the classroom environment. Classroom management practices impact the general supportiveness and positivity that can be seen in classrooms. Classroom management is thought to positively impact the effects of academic instruction as measured by student outcomes. Students need to be engaged and paying attention to instruction in order to learn. Successful classroom instruction is contingent on effective classroom management to maintain appropriate student behavior and student engagement (Evertson & Weinstein, 2006). Although literature supports the impact of classroom management on student outcomes, research also indicates that many teachers struggle to implement successful classroom management. Identification of the most effective classroom management skills for student engagement can inform professional development efforts targeting specific classroom management skills to increase the likelihood that they are implemented with fidelity. 
+
+Students with emotional and behavioral disorders (EBD) often have difficulty demonstrating socially appropriate behaviors in academic settings and commonly engage in off-task and disruptive behaviors during classroom instruction. These observed lower levels of academic engagement can be linked to the evidence that suggests students with EBD generally have lower levels of academic achievement.
+
+This analysis will use Principal Component Analysis and logistic regression to examine how classroom management and behavior variables predict student engagement.
+
+# The Data & Research Question
+The data included in this analysis come from the Reducing Severe Problem Behavior project completed within the Vanderbilt Behavior Research Center (VBRC). The project aimed to evaluate the effectiveness of a comprehensive intervention combining classroom management strategies, self-evaluation activities, and academic tutoring on teacher and student behaviors. The larger study included a total of 436 students identified as displaying severe challenging behavior in the school setting and 260 1st-6th grade general and special education teachers. Within this study, both students and teachers were observed prior to randomization to intervention or control groups. Pre-intervention (time point 1) data are the only data examined within this analysis. These data represent teachers' natural rates of classroom management practices and students corresponding natural rates of engagement. This analysis includes 294 students.
+
+There are multiple datasets used in this analysis: the Systematic Direct Observation (SDO) dataset, the Classroom Atmosphere Rating Scale (CARS) dataset, and a dataset that includes 3 different behavioral rating measures. 
+
+The **Systematic Direct Observation dataset** includes student engagement (the outcome variable) and multiple individual, specific teacher practices (predictor variables). These were measured via multiple systematic direction observations that were 15 minutes in length. The specific variables include:
+
+1. **Student engagement (duration, seconds)** - Student is appropriately engaged in working on assigned/approved activity. Signs of this behavior include (a) attending to the material and the task, (b) making appropriate motor responses (e.g., writing, following rules of a game, looking at the teacher or the student speaking), (c) asking for assistance (where appropriate) in an acceptable manner (e.g. raising hand), and (d) waiting appropriately for the teacher to begin or continue with instruction (staying quiet and staying in seat).
+
+2. **Whole group (duration, seconds)** - when the focal student was engaged in an activity with the whole class. 
+
+3. **Small group (duration, seconds)** -  small group instruction was recorded when the focal student was participating in an activity with a few peers
+
+4. **Instructional talk (duration, seconds)** - when a teacher engaged in verbal statements relating to instructional tasks including instructions and other information relevant to the preparation or completion of tasks. 
+
+5. **Praise (frequency)** - when a teacher provided a verbal statement or gesture that indicated approval of student behavior over and above an evaluation of adequacy or acknowledgement of a correct response to a question
+
+6. **Opportunities to Respond (OTR; frequency)** - when a teacher stated an instructional question, statement, or gesture that sought an academic response orally or publicly from one or more students 
+
+7. **Reprimand (frequency)** - when a teacher states a verbal comment or gesture indicating disapproval of a student's social behavior (includes redirections and statements of negative consequences)
+
+The **Classroom Atmosphere Rating Scale (CARS)** dataset includes 6 items from a questionnaire that observers use to rate general classroom factors related to classroom management, student behavior, and teacher practices. All of the items are scored on a 1-5 scale, 1 representing very high and 5 representing very low. Lower scores are associated with better classroom atmospheres (e.g., students showing interest in classroom activities, students are following posted rules) and higher scores are associated with poorer classroom atmosphere (e.g., students appear uninterested, students are not following posted rules). The CARS is used to rate the general classroom atmosphere so it considers the teachers' actions and all students in the classroom, not only the actions of the students who were observed for engagement within the SDO dataset. The specific items include:
+
+1. **Compliance** - students level of compliance during structured time
+
+2. **Rules** - students consistently follow rules appropriate to the setting
+
+3. **Interest** - students level of interest, enthusiasm, and involvement in classroom activities
+
+4. **On-task** - classroom is focused and on-task
+
+5. **Responsive** - classroom is responsive to individual differences in students' social and academic needs, feelings, etc.
+
+6. **Supportive** - classroom is supportive of students' efforts
+
+The **Student Behavioral Ratings** dataset includes 3 different measures all focused on rating students' challenging behavior. The three measures have multiple components that are discussed below:
+
+1. The **Social Skills Rating System (SSRS)** is a questionnaire completed by the student's teacher to measure how often a student exhibits certain social skills, problem behaviors, and academic competence. The **social skills sub-test** and **problem behaviors sub-test** ask teachers to rate students for how often (i.e., 0-never, 1-sometimes, 2-very often). A high score for the social skills sub-test would indicate a student with more pro-social behaviors and a high score for the problem behavior sub-test would indicate a student with more challenging behavior. The **academic competence sub-test** asks teachers to rate student's academic learning behaviors on a scale of 1-5 in relation to the class (e.g., 1- lowest 10%, 5- highest 10%). A high score for the academic competence sub-test indicates a student with high academic skills.
+
+2. The **Systematic Screening for Behavior Disorders (SSBD)** is a universal screening tool for students regarding their risk of either externalizing or internalizing problem behaviors. The SBBD is completed by the student's teacher. There are three separate indexes in the SSBD that are included in this analysis. The **adaptive index** and the **maladaptive index** asks teachers to rate students behavior on a 1-5 scale with 1 being never and 5 being frequently. A high score on the adaptive index indicates a student with better adaptive/social behavior skills. A high score on the maladaptive index indicates a student with higher levels of challenging behavior. The **critical events index** asks teachers to score the number of critical behavioral events students have engaged in (e.g., physical assaults, damaging property, self-injury, obscene language use). A high score on the critical events index would indicate a student who has engaged in higher rates of challenging behavior.
+
+3. The **Teacher's Report Form (TRF)** from the Child Behavior Checklist is a rating scale completed by teachers scoring. It consists of 118 items related to behavior problems, which are scored on a 3-point scale ranging from not true to often true of the child. For this analysis, the scores are broken into 3 categories: **internalizing behavior**, **externalizing behavior**, and **total problem behavior**. A high score on all three of these categories would indicate a student engaging in higher rates of challenging behavior.
+
+**The primary research question for this analysis is:** 
+Can variables related to teacher practices, classroom atmosphere, and student challenging behaviors be reduced into component scores? If so, do these components and/or individual teacher and student variables predict student engagement?
+
+```{r}
+rm(list=ls(all=TRUE)) #clear memory
+library(tidyverse) #calling tideverse package
+library(ggplot2) #calling ggplot package
+library(dplyr) #calling dplyr package
+library(corrplot)
+library(PerformanceAnalytics) #for chart.Correlation
+```
+
+# Read in Original Data Sets
+In this section, I will read in 3 different datasets that are used within the PCA and the final model. Each dataset includes further description below.
+
+## Dataset 1 - Systematic Direct Observation (SDO) Scores
+This dataset includes the outcome variable (student engagement) and specific teacher practices. Each student was observed multiple times during these baseline observations; therefore multiple rows of the dataset are related to one student. There are multiple observations for each student and thus each teacher at time point 1, therefore means are calculated to allow each student to be a unique ID. Mean rates of these variables are calculated so that each student has one corresponding row of data that represents the mean use of teacher practices and mean duration of student engagement. 
+
+```{r}
+#Read in the data
+observations_scores <- read_csv("TeacherMOOSES_T1.csv")%>%
+  mutate(across(everything(), ~ifelse(.=="", NA, as.character(.)))) %>% #mutate blanks to NAs
+  filter(!is.na(Session_Number)) %>% #filter out observations with NAs
+  filter(!(Session_Number == 0)) %>% #Remove Session 0s which represented pooled data from observations/sessions 1-4
+  rename(student_id = Student_id) %>% #rename to match other dataset
+  select(student_id, Dur_wholeclass, Dur_smallgroup, Dur_instalk, Freq_OTR, Freq_praise, Freq_reprimand, Dur_engaged) %>%  #selecting relevant variables
+  mutate_if(is.character, as.numeric) #mutate all columns to numeric values, this was necessary due to the above code for mutating blanks to NAs
+
+#Create means of SDO scores
+observations_means <- observations_scores %>% 
+  group_by(student_id) %>% #grouping by student_id to create a means for each individual student
+  summarise(
+    mean_duration_wholeclass = mean(Dur_wholeclass, na.rm = TRUE),
+    mean_duration_smallgroup = mean(Dur_smallgroup, na.rm = TRUE),
+    mean_duration_instructionaltalk = mean(Dur_instalk, na.rm = TRUE),
+    mean_frequency_OTRs = mean(Freq_OTR, na.rm = TRUE),
+    mean_frequency_praise = mean(Freq_praise, na.rm = TRUE),
+    mean_frequency_reprimands = mean(Freq_reprimand, na.rm = TRUE),
+    mean_duration_student_engaged = mean(Dur_engaged, na.rm = TRUE)) %>% 
+  ungroup() %>% #tells R to not group sub group for the next lines of code
+  arrange(desc(mean_duration_student_engaged)) #arrange in descending order by mean student engagement
+
+str(observations_means)
+```
+
+## Dataset 2: Classroom Atmosphere Rating Scale (CARS)
+This dataset includes the 6 items that make up the CARS. The study included four seperate observations using the CARS but those scores were previously averaged to create a final CARS rating for the classroom; therefore means do not need to be calculated. 
+
+```{r}
+#Read in the data
+teacher_CARS <- read_csv("CARS_T1_T4.csv") %>% 
+  mutate(across(everything(), ~ifelse(.=="", NA, as.character(.)))) %>% #mutate blanks to NAs
+  filter(!is.na(o_comply)) %>% #remove NAs
+  filter(timepoint == 1) %>% #only looking at time point 1 for this analysis
+  select(student_id, o_comply, o_rules, o_interest, o_ontask, o_respons, o_support) %>%  #selecting the 5 components & student ID
+  rename(compliance_score = o_comply, #rename components for clarity
+    rules_score = o_rules,
+    interest_score = o_interest,
+    ontask_score = o_ontask,
+    response_score = o_respons,
+    support_score = o_support) %>% 
+  mutate_if(is.character, as.numeric) #mutate all columns to numeric values, this was necessary due to the above code for mutating blanks to NAs
+
+```
+
+## Dataset 3: Student Behavioral Scores
+This dataset includes 9 sub categories from the 3 behavioral rating measures (SSBD, SSRS, and TRF). Each student recieved a score for each of these measures at timepoint 1. 
+
+```{r}
+#Read in the data
+student_behavior_ratings <- read_csv("Student_Data.csv") %>% 
+  mutate(across(everything(), ~ifelse(.=="", NA, as.character(.)))) %>% #mutate blanks to NAs
+  filter(!is.na(student_id)) %>% #remove NAs
+  filter(timepoint == 1) %>% #only looking at time point 1 for now
+  select(3,57:60,62,64,67,69,71) %>% #selecting the behavior scores from this larger student demographic dataset
+  rename(SSBD_critical_events = ssbd_crit, #renaming the subtests for each measure for clarity
+         SSBD_adaptive_behavior = ssbd_adapt,
+         SSBD_maladptive_behavior = ssbd_mal,
+         SSRS_socal_skills = ssrs_ss_ss,
+         SSRS_problem_behavior = ssrs_pb_ss,
+         SSRS_academic_competence = ssrs_ac_ss,
+         TRF_internalizing_behavior = inter_ts_internal,
+         TRF_externalizing_behavior = inter_ts_external,
+         TRF_total_behavior = inter_ts_total) %>% 
+  mutate_if(is.character, as.numeric) #mutate all columns to numeric values, this was necessary due to the above code for mutating blanks to NAs
+
+str(student_behavior_ratings)
+```
+
+## Join Datasets into 1 Tibble
+In this section I join together the above 3 datasets. I first join datasets 1 and 2 (SDO & CARS) and then join the 3rd one in (behavior ratings). 
+
+```{r}
+#Join Datasets 1, 2
+obs_CARS_combined <- left_join(observations_means, teacher_CARS, by = "student_id") %>% #joining datasets 1 & 2 first, joining by student_id
+  filter(!is.na(compliance_score))
+
+str(obs_CARS_combined)
+
+#Join in Dataset 3
+final_joined_data <- left_join(obs_CARS_combined, student_behavior_ratings, by = "student_id") %>% #joining in the third dataset with the above joint dataset
+  mutate(across(everything(), ~ifelse(.=="", NA, as.character(.)))) %>% #mutate blanks to NAs
+  na.omit %>% #remove NAs
+  filter(!is.nan(compliance_score)) %>% 
+  mutate_if(is.character, as.numeric) %>%  #mutate all columns to numeric values, this was necessary due to the above code for mutating blanks to NAs
+  relocate(mean_duration_student_engaged, .before = mean_duration_wholeclass) #Reorder to put the outcome variable (mean_duration_student_engaged) second in the tibble, behind student_id.
+
+str(final_joined_data)
+  
+```
+
+# Principal Component Analysis
+The following subsections are included to complete the PCA.
+
+## Examine Normality
+In this section I examine the distrution of data for each predictor variable to determine if the data are normally distributed. Due to the size of the dataset, I visually examine the normality of the data in chunks. I remove the variables from the final joined dataset that are unable to be included in the PCA due to the distribution of the data. I now have a final dataset that can be used for the PCA.
+
+When examining normality, it looks like only 2 of the teacher practices (i.e., instructional talk, OTRs) are normally distributed; therefore they will be included in the PCA. The other predictor variables that are not included in the PCA will be used later for the regression model.
+
+I also examined normality for the items and all the items were relatively, normally distributed; therefore they are included in the PCA.
+
+I also examine the normality of these data to determine if they can be included in the PCA. All 9 measures were normally distributed and thus will be included in the PCA.
+
+```{r}
+#Examine normality
+
+cor(final_joined_data)
+cor_matrix <- abs(cor(final_joined_data))
+
+#Examine normality for the outcome variable and the direct observation predictor variables
+chart.Correlation(final_joined_data[,2:8], histogram = TRUE, method = "pearson")
+#Instructional Talk & OTRs are the only teacher practice variables that are normally distributed. OTRs is relatively normally distributed. The other variables will not be used in the PCA, but will be used as individual predictors within the logistic regression model below. The outcome variable, student engagement, is not normally distributed therefore it will later be converted into a binary outcome and a logistic regression will be used.
+
+#Examine normality for the classroom atmosphere ratings predictor variables
+chart.Correlation(final_joined_data[,9:14], histogram = TRUE, method = "pearson")
+#The CARS items appear relatively, normally distributed so I will use all 6 items within the PCA.
+
+#Examine normality for the student behavior rating predictor variables
+chart.Correlation(final_joined_data[,15:23], histogram = TRUE, method = "pearson")
+#All the behavior ratings appear normally distributed; therefore, they will be used in the PCA.
+
+#Create PCA dataset with only the normally distributed variables
+pca_data <- final_joined_data %>%  
+  select(5:6,9:23) #removing the variables from the SDO dataset 1 that were not normally distributed, columns 4 & 5 are instructional talk and OTRs
+
+str(pca_data)
+
+```
+
+## Correlation
+In this section, I examine the correlation between all the variables included in the PCA to determine if any variables are highly correlated (i.e., above 0.899). None of the variables are correlated with each other above 0.899 so they were all okay to stay within the PCA. 
+
+```{r}
+cor(pca_data) #looking at the correlations between all predictor variables
+
+```
+
+## Scale Variables
+Some of the measures included in this analysis are frequency counts, duration measures, and others are interval rating scales. Because the data are not all measured in the same way, I scale the variables to allow for comparison across variables.
+
+```{r}
+library(psych) #load in psych package
+
+pca_data_scaled <- pca_data %>% 
+  na.omit() %>% 
+  mutate_at(c(1:17), ~(scale(.) %>% as.vector))   #as.vector ensures columns are vectors
+  #scale all variables so mean is zero and values are standardized to SD from zero
+
+str(pca_data_scaled) #looking at the structure of the scaled data
+psych::describe(pca_data_scaled) #checking to see that mean values are 0 and SDs are 1
+
+```
+
+## Visualizing PCA
+In order to understand the underlying patterns of the variables included in the PCA.
+
+```{r}
+library(factoextra) #load in package that allow syou to extract and visualize the output of multivariate data analyses, including 'PCA'
+
+#line below runs a simple PCA with a component for each variable. 
+#the most variance will be explained in component 1 and 2
+viz_pca <- prcomp(pca_data_scaled, center = TRUE,scale. = TRUE) 
+
+#Graph of variables. Positive correlated variables point to the same side of the plot. Negative correlated variables point to opposite sides of the graph.
+
+fviz_pca_var(viz_pca,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE #Avoid overlapping text if possible 
+             )
+
+```
+
+## Bartlett's Test 
+The Bartlett's test allows you to look at the relationships between the variables in the analysis to determine if they are related enough to be combined into components. The p-value is below 0.05 so we can see it is not an identity matrix and proceeding with the PCA is appropriate.
+
+```{r}
+cortest.bartlett(pca_data_scaled, 294) #294 equals sample size
+
+# p value below .05, so it is not an identity matrix
+```
+
+## Kaiser-Meyer-Olkin (KMO) index
+In this section, I examine the KMO indices. This will get rid of variables that that are not showing strong correlations. The statistic is a measure of the proportion of variance among variables that might be common variance. The higher the proportion, the more suited your data is to Factor Analysis. Kaiser (1974) recommends a bare minimum of 0.5; therefore, any predictor variable with an MSA value lower than 0.5 was removed in a step wise fashion, starting with the lowest MSA. The TRF internalizing behavior scores and instructional talk were removed because of low MSA scores. After removing the TRF internalizing behavior scores and instructional talk, Opportunities to respond (OTRs)'s MSA was 0.51. OTRs are the only variable from the direct observation dataset that were left in the PCA. I chose to remove OTRs from the PCA analysis and will use it as an individual predictor variable within the logistic regression model along with the other predictor variables from the direct observation dataset.  After removing these three variables, this is the final dataset used in the PCA.
+
+```{r}
+KMO(pca_data_scaled) #running KMO with all the included variables
+#looks like the TRF internalizing scores are below 0.7 and are the lowest MSA score; therefore will be removed first
+
+pca_data_scaled_2 <- pca_data_scaled %>% 
+  select(1:14, 16:17) #select all variables other than the Teacher Rating Form (TRF) internalizing behavior scores
+
+KMO(pca_data_scaled_2) #running KMO with all variables except TRF internalizing
+#it looks like instructional talk is still below 0.7 and is now the lowest MSA score
+
+pca_data_scaled_3 <- pca_data_scaled_2 %>% 
+  select(2:16) #selecting all variables other than mean_duration_instructional_talk
+
+KMO(pca_data_scaled_3) #running KMO with all variables except TRF internalizing and instructional talk
+#All the predictor variable's MSA score is now above 0.50. 
+
+#Removing OTR
+pca_data_scaled_4 <- pca_data_scaled_3 %>% 
+  select(2:15) #selecting all variables other than OTRs
+
+str(pca_data_scaled_4) #looking at the structure of the dataset with all variables that remain
+
+```
+
+## Baseline PCA
+In this section, I run a baseline PCA with the number of variables (14) that are still included in the dataset. I examine the sum of squared (SS) loadings and the scree plot to determine a potentially appropriate number of components. When examining the SS loadings, there are 4 that are above 1.0 (Kaiser's criterion) and the scree plot looks to have a point of inflection around the 4th point; therefore, 4 components are were tried first for this analysis. 4 components ended up being the best fit with the variables fitting well into 4 components, as seen below in future sections.
+  
+```{r}
+pca_base <- principal(pca_data_scaled_4, nfactors = 14, rotate = "none") #nfactors is number of variables, which is 14 as seen above in the final line of code from the KMO section
+
+pca_base #results, looking at the SS loadings, there are 4 that are greater than 1 (Kaiser's criterion)
+
+plot(pca_base$values, type = "b") #scree plot
+
+#Let's start with 4 components
+
+```
+
+## Check Residuals
+In this section, I examine the residuals to determine if they are normally distributed. It appears that they are relatively normally distributed.
+
+```{r}
+pca_resid <- principal(pca_data_scaled_4, nfactors = 4, rotate = "none")
+pca_resid #results. 4 looks good
+
+#residuals
+#require correlation matrix for final data
+corMatrix<-cor(pca_data_scaled_4)
+corMatrix
+
+residuals<-factor.residuals(corMatrix, pca_resid$loadings)
+
+#call a histogram to check residuals
+hist(residuals) #are the residuals normally distributed? They look okay, there is a long tail on the right.
+
+```
+
+## Informed PCA with specific number of components
+In this section, I rotate the data using the oblique technique (promax) and run the PCA with 4 components. We can see the SS loadings change because I rotated the data. The component correlations are relatively low because the components are not highly correlated with each other. We can see also that component 1 and 2 are explaining the highest proportion of the variance with 0.26 and 0.24, respectively. The components that are created seem to make sense theoretically; therefore I stuck with 4 components and plotted them in the next section.
+
+```{r}
+pca_final <- principal(pca_data_scaled_4, nfactors = 4, rotate = "promax")
+pca_final #results. 
+
+print.psych(pca_final, cut = 0.3, sort = TRUE) #Include loadings over 0.3 (medium correlation) to make it easier to examine which component the variables are strongly related to.
+
+```
+
+## Plotting PCA Results
+In this section, I plot the PCA results to examine separation between the components. You can see in each of the boxes the components are clustered together and are separated from the other components. Components 1 and 2 are clustered closer together which make sense because the correlations within those components are all very similar and strong. As compared to component 3 with a wider range of correlations (0.50, 0.75 and 0.90). 
+
+Within the component anlaysis diagram, we do see that RC1 is negatively correlated with RC3 which make sense. All the variables loading onto these two components are subtests from the behavioral rating measures. RC1 contains all the subtests measuring challenging behavior and RC3 contains all the subtests measuring appropriate behavior. RC2 and RC4 are also correlated but with a positive 0.4 correlation. All of these variables are from the CARS measure but appear to be split by items looking at classroom organization versus items looking at teacher support or responsiveness.
+
+```{r}
+plot(pca_final) #plotting the PCA - component 1 is black, component 2 is blue, component 3 is red, component 4 is grey
+#It looks like there is separation among the components.
+
+fa.diagram(pca_final) #provides a diagram of the name the variables matched with its' respective component
+
+```
+
+## Collect factor scores
+In this section, I collect factor scores and name the components. 
+
+RC1 is named challenging behavior because it contains all the subtests that scored students problem behavior. All the subtests within this component loaded onto the component with relatively strong correlations but it appears the TRF externalizing behavior ratings were the strongest. 
+
+RC2 is named classroom disorganization because all the variables within this component were looking at items like classroom rules, students' being on-task, the level of compliance and interests in the classroom. Higher scores on these measures indicate disorganization in the classroom. 
+
+RC3 is named prosocial behavior because the three subtests from the student behavioral ratings all measured students' social, adaptive, or academic skills. Scores on these measures indicate higher or stronger skills in these areas. It looks like academic competence and social skills were the strongest correlations for this component.
+
+RC4 is named teacher unsupportiveness because the two variables within this component looked at the classroom or teachers rating related to supporting and responding to student differences. Higher scores on these two items were related to classrooms being unsupportive or unresponsive.
+
+```{r}
+
+pca_final_scores <- as.data.frame(pca_final$scores) #call the pca scores, these are the weighted scores for each observation
+
+pca_final_scores 
+
+#renaming columns to match with the latent constructs
+pca_final_scores <- pca_final_scores %>% 
+  rename(Challenging_Behavior = RC1, Classroom_Disorganization = RC2, Prosocial_Behavior = RC3, Teacher_Unsupportiveness = RC4)
+
+```
+
+# Logistic Regression Model
+Now that the PCA is complete, the 4 components and additional individual predictor variables are used within a logistic regression model. The following subsections are describe the logistic regression model.
+
+## Create Final Dataset for Modeling
+To create a final dataset for the model, I combined the 4 components from the PCA with the outcome variable (student engagement) and the individual variables that were unable to be included in the PCA because ther were not normally distributed or were removed during the KMO step of the PCA. All of these individual variables happen to come from the direct observation dataset (dataset 1) and are individual teacher practices that have been shown to be significant predictors of student engagement in previous literature. In this section, I take those variables, scale them, and combine them with the 4 components created within the PCA.
+
+```{r}
+str(final_joined_data) #looking at the structure to determine which variables to select
+
+#combine this dataframe with earlier dataframe (the individual predictor variables and the outcome variable from the SDO)
+final_joined_data_2 <- final_joined_data %>% 
+  select(2:8) #selecting these variables that were not included in the PCA (all the predictor variables from the direct observation dataset) and the outcome variable (student engagement)
+
+str(final_joined_data_2) #checking the structure
+
+final_joined_data_scaled <- final_joined_data_2 %>% #scale all variables so mean is zero and values are standardized to SD from zero
+  na.omit() %>% 
+  mutate_at(c(1:7), ~(scale(.) %>% as.vector))   #as.vector ensures columns are vectors
+
+psych::describe(final_joined_data_scaled) #double checking that the means are 0 and standard deviations are 1
+
+final_data <- cbind(final_joined_data_scaled, pca_final_scores) #combining the outcome variables and the individual predictor variables with the components from the PCA
+  
+str(final_data) #checking structure of final combined dataset
+
+```
+
+## Make Student Engagement into Binary Outcome Variable
+I first examine the distribution of the outcome variable, mean duration of student engagement. Student engagement is not normally distributed; therefore, a logistic regression is the best fit. I create a high engagement and low engagement group by using a mean split. When using a mean split, the classes (high, low) are unbalanced therefore I create equal groups using the n of the lower group (124).
+
+```{r}
+#examining distribution of outcome variable
+chart.Correlation(final_data, histogram = TRUE, method = "pearson")
+#Student engagement is not normally distributed therefore it will be converted into a binary variable by splitting the it into high and low engagement
+
+#splitting the data by mean student engagement into high and low groups
+final_data_meansplit <- final_data %>% 
+  dplyr::mutate(engagement_group = 
+    dplyr::case_when(
+      mean_duration_student_engaged > mean(mean_duration_student_engaged) ~ "High",
+      mean_duration_student_engaged < mean(mean_duration_student_engaged) ~ "Low"
+    )
+  )
+
+str(final_data_meansplit) #looking at the structure
+
+final_data_meansplit_2 <- final_data_meansplit %>% 
+  select(2:12) #selecting on the predictor variables and binary outcome variable
+
+table(final_data_meansplit_2$engagement_group) #examining the number of rows in each group. The high engagement group has 170 and low engagement group has 124. 
+
+#Create equal groups by removing 46 entrees from the high engagement group to match the number in the low engagement group
+final_data_meansplit_3 <- final_data_meansplit_2 %>%
+  group_by(engagement_group) %>%
+  sample_n(124) #equalize groups by selecting 124 observations per group
+  
+table(final_data_meansplit_3$engagement_group) #checking that the groups are now equal
+
+str(final_data_meansplit_3) #final check of the structure of the dataset
+
+```
+
+## Correlation to Examine Multicollinearity
+In this section, I examine the correlation between the individuals variables to check for multicollinearity. This will help to determine if variables are potentially  measuring the same construct. This was not completed previously since I am now adding in individual variables. Based on the correlations seen, there does not appear to be any significant issues with multicollinearity.
+
+```{r}
+
+cor(final_data_meansplit_3[, c(1:10)])
+
+library(corrplot)
+
+cor_matrix <- abs(cor(final_data_meansplit_3[, c(1:10)])) #create a correlation matrix with  absolute values
+
+corrplot(cor_matrix, 
+         type="lower", #put color strength on bottom
+         tl.pos = "ld", #Character or logical, position of text labels, 'ld'(default if type=='lower') means left and diagonal,
+         tl.cex = 0.50, #Numeric, for the size of text label (variable names).
+         method="color", 
+         addCoef.col="black", 
+         diag=FALSE,
+         tl.col="black", #The color of text label.
+         tl.srt=45, #Numeric, for text label string rotation in degrees, see text
+         is.corr = FALSE, #if you include correlation matrix (maybe?)
+         #order = "hclust", #order results by strength
+         #col=gray.colors(100), #in case you want it in gray...
+         number.digits = 2) #number of digits after decimal
+
+#no significant issues with multicollinearity
+
+```
+
+## Examine Trends in Data
+In this section, I look at the means and standard deviations of the variables. This will be helpful later to determine if suppression effects occur.
+
+```{r}
+final_data_meansplit_3 %>% 
+  group_by(engagement_group) %>% 
+  summarise_at(1:10, funs(mean, sd)) #summarize mean and SD for low and high enagement groups
+
+str(final_data_meansplit_3)
+
+```
+## Cross Validiation with Feature Selection (10-fold)
+In this section, I run a cross validation logistic regression model with feature selection using a 10-fold method. The final model includes instructional talk, praise, reprimands, challenging behavior, and classroom disorganization. Suppression effects are discussed in the section below.
+
+```{r}
+library(caret) #this will run multinomial logistic regression
+
+set.seed(1234) #keeps the randomization pattern the same when you come back
+
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+#method = cross validation, number = ten times (10 fold cross-validation)
+
+#the 10 fold CV stepwise model for logistic regression with stepwise!
+lr_cv10 <- train(engagement_group ~ .,
+                 data = final_data_meansplit_3,
+                 method="glmStepAIC", # Step wise AIC (estimator of prediction error) from maas package, general linear model, this is basically your feature selections (AIC would select the best predictors if you had a bunch of predictors)
+                 direction="backward", #it will develop 22 different models, it will put all 3 in the model at once then remove to see how the model performs - backwards or forwards really doesnt make a difference because its so nuanced
+                 trControl = train.control,
+                 family = "binomial")
+
+#the model
+summary(lr_cv10)
+
+```
+
+## Suppression Effects
+There do not appear to be any suppression effects. Both instructional talk and praise have negative z values which we would expect. When going from the high engagement group (0) to the low engagement group (1) we'd expect instructional talk and praise to decrease. Reprimands, the challenging behavior component, and the classroom disorganization component have positive z values. When going from the high engagement to the low engagement group we would expect reprimands, challenging behavior, and classroom disorganization to increase.
+
+## Log Odds-Ratio
+In this section, I compute the probablities to allow for easier interpretation of the model's coefficients. Students with high engagement are 35% more likely than students with low engagement to have higher mean durations of teacher instructional talk and 32% more likely to have mean frequency of teacher praise. Students with high engagement are 63% more likely than students with low engagement to have a lower mean frequency of reprimands, 57% more likely to have lower challenging behavior scores, and 65% more likely to have lower ratings of classroom disorganization.
+
+```{r}
+
+#create function for computing probabilities
+probabilities <- function(co_ef){
+  odds <- exp(co_ef)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+#compute probabilities
+probabilities(-0.6160) #mean_duration_instrutionaltalk
+probabilities(-0.7197) #mean_frequency_praise
+probabilities(0.5261) #mean_frequency_reprimands
+probabilities(0.2784) #Challenging_Behavior
+probabilities(0.6025) #Classroom_Disorganization
+
+
+```
+
+## Predicted & Actual Values
+Below are the results. The Kappa value is 0.45 demonstrating fair agreement. The F1 score is 0.72 which is higher than chance but an okay level of accuracy. The recall was 0.73 and the precision is 0.72 indicating a slightly higher performance for the number of true events found by the model. As seen in the confusion matrix below, 88 students were accurately predicted as high engagers but 36 actual high engagers were predicted as low engagers. 92 low engagers were predicted accurately as low engagers but 32 low engagers were predicted as high engagers. 
+
+```{r}
+#get predicted values
+predicted <- unname(lr_cv10$finalModel$fitted.values) #change from a named number vector
+
+#add predicted values to tibble
+
+final_data_meansplit_3$predicted.probabilities<-predicted
+
+final_data_meansplit_3 <- final_data_meansplit_3%>% 
+  #assign 0 to high engagement, 1 to low engagement
+  mutate(actual = ifelse(engagement_group == "High", 0, 1)) %>% 
+  #assign 1 to .50 and less and 2 to anything else 
+  mutate(predicted = ifelse(predicted.probabilities < .50, 0, 1))
+
+#both need to be factors
+final_data_meansplit_3$predicted <- as.factor(final_data_meansplit_3$predicted)
+final_data_meansplit_3$actual <- as.factor(final_data_meansplit_3$actual)
+
+str(final_data_meansplit_3)
+table(final_data_meansplit_3$actual) #what are final numbers
+
+# create confusion matrix using CARET
+confusionMatrix(final_data_meansplit_3$actual, final_data_meansplit_3$predicted,
+                mode = "everything", #what you want to report in stats
+                positive="0") #positive here is low engagement
+
+```
+
+## Visualiztion with Mosaic Plot
+In this section, I create a mosaic plot to allow for visualization of the actual nd predicted values.
+
+```{r}
+#Putting the actual and predicted values into a table
+mosaic_table <- table(final_data_meansplit_3$actual, final_data_meansplit_3$predicted)
+mosaic_table #check on that table
+
+#Running a simple mosaic plot to visualize the actual and predicted values
+mosaicplot(mosaic_table,
+           main = "Confusion matrix for logistic regression",
+           sub = "Accuracy of prediction",
+           xlab = "Predicted",
+           ylab = "Actual",
+           color = "skyblue2",
+           border = "chocolate")
+
+```
+
+# Discussion 
+The PCA showed that individual variables within the Classroom Atmosphere Rating Scale and the behavioral ratings could be reduced into 4 components. Those components were used within the logistic regression along with individuals predictor variables.
+
+The final model included instructional talk, praise, reprimands, challenging behavior, and classroom disorganization suggesting that these are the strongest predictors of student engagement. These results suggest that teacher who engage in more instructional talk versus other talk (off-task, distracted talk unrelated to instruction), include more praise and less reprimands, and have better classroom organization scores may see students who are more engaged in the instruction. Additionally, students with higher rates of challenging behavior as measured via the Social Skills Rating System (SSRS), Systematic Screening for Behavior Disorders (SSBD), and the Teacher's Report Form (TRF) can be expected to be less engaged in instruction. These students may require additional supports or higher fidelity with tier 1 evidence-based practices in order to be more engaged in instruction.
+
+The model's performance (as seen in the F1 score, kappa values, and the confusion matrix) indicates that these included variables are only moderately explaining student engagement. The model is not fully capturing all the important variables or factors that may predict student engagement. 
+
